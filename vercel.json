@@ -1,0 +1,1 @@
+{"functions":{"api/mcp.py":{"maxDuration":60}},"rewrites":[{"destination":"/api/mcp","source":"/mcp"}]}

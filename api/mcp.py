@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import core  # noqa: E402
 
 PROTOCOL_VERSION = "2026-07-28"
+KNOWN_VERSIONS = {"2025-03-26", "2025-06-18", "2025-11-25", "2026-07-28"}
 SERVER_INFO = {"name": "second-opinion", "version": "0.1"}
 
 TOOL_SCHEMAS = [
@@ -77,7 +78,13 @@ def _authorized(headers: dict) -> bool:
 
 async def _dispatch(method: str, params: dict) -> dict | None:
     if method == "initialize":
-        return {"protocolVersion": PROTOCOL_VERSION,
+        # Negotiate: answer with the client's version when we support it,
+        # otherwise fall back to our latest. Answering with an unsupported
+        # version makes strict clients (Claude, ChatGPT) disconnect.
+        params = params or {}
+        asked = params.get("protocolVersion")
+        version = asked if asked in KNOWN_VERSIONS else PROTOCOL_VERSION
+        return {"protocolVersion": version,
                 "capabilities": {"tools": {}},
                 "serverInfo": SERVER_INFO}
     if method == "tools/list":

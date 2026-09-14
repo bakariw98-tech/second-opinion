@@ -110,6 +110,12 @@ async def _dispatch(method: str, params: dict) -> dict | None:
             return {"content": [{"type": "text",
                                  "text": json.dumps({"error": str(e)[:300]})}],
                     "isError": True}
+        if isinstance(result, dict) and result.get("error"):
+            # Hard failure, not a result: the agent must not narrate takes
+            # that were never produced.
+            return {"content": [{"type": "text",
+                                 "text": json.dumps({"error": result["error"]})}],
+                    "isError": True}
         return {"content": [{"type": "text", "text": json.dumps(result)}]}
     return {"error": {"code": -32601, "message": f"unknown method: {method}"}}
 

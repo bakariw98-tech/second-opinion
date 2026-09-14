@@ -142,8 +142,20 @@ async def second_opinion(prompt: str, models: list[str] | None = None,
     models = models or DEFAULT_PANEL
     unknown = [m for m in models if m not in FRONTIERS]
     if unknown:
-        return {"error": f"unknown models: {unknown}",
-                "known": list(FRONTIERS)}
+        return {"error": f"unknown models: {unknown}. "
+                         f"Call list_models for the current roster. "
+                         f"No rival models were consulted — do not claim otherwise."}
+
+    # Fail fast and loudly when no credential exists. A 200 with null takes
+    # lets a calling agent narrate "I checked with three models" off zero
+    # output — that must never happen.
+    try:
+        _auth_headers()
+    except RuntimeError as e:
+        return {"error": (
+            f"Second Opinion is not configured on this server: {e}. "
+            f"The server owner must set OPENROUTER_API_KEY. "
+            f"No rival models were consulted — do not claim otherwise.")}
 
     user_msg = prompt if not context else f"Context:\n{context}\n\nQuestion:\n{prompt}"
     messages = [
@@ -163,8 +175,16 @@ async def second_opinion(prompt: str, models: list[str] | None = None,
 
     takes = await asyncio.gather(*[ask(m) for m in models])
 
-    synthesis = ""
     good = [t for t in takes if t.get("take")]
+    if not good:
+        detail = "; ".join(f"{t['name']}: {t.get('error', 'no output')[:120]}"
+                           for t in takes)
+        return {"error": (
+            f"All {len(models)} rival models failed: {detail}. "
+            f"No takes were produced — do not claim any model was consulted."),
+            "takes": takes, "synthesis": ""}
+
+    synthesis = ""
     if len(good) >= 2:
         digest = "\n\n".join(f"--- {t['name']} ---\n{t['take']}" for t in good)
         try:

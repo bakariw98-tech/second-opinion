@@ -24,7 +24,11 @@ async def second_opinion(prompt: str, models: list[str] | None = None,
              The caller chooses how many rivals are in the room.
     context: optional extra background the rivals should see.
     """
-    return await core.second_opinion(prompt, models, context, max_tokens)
+    result = await core.second_opinion(prompt, models, context, max_tokens)
+    if result.get("error"):
+        # Surface as a failed tool call, never a result with null takes.
+        raise RuntimeError(result["error"])
+    return result
 
 
 @mcp.tool()

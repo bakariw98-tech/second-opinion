@@ -51,11 +51,16 @@ def _auth_headers() -> dict:
                 return {"Authorization": f"Bearer {surrogate}"}
         except Exception:
             pass
-    env_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    env_key = ""
+    for var in ("OPENROUTER_API_KEY", "open_router_api_key",
+                "openrouter_api_key", "OpenRouter_API_Key"):
+        env_key = os.environ.get(var, "").strip()
+        if env_key:
+            break
     if env_key:
         return {"Authorization": f"Bearer {env_key}"}
     raise RuntimeError("no OpenRouter credential: authd surrogate unavailable "
-                       "and OPENROUTER_API_KEY not set")
+                       "and no OPENROUTER_API_KEY env var set")
 
 
 def _sync_client() -> httpx.Client:
